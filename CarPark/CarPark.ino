@@ -59,6 +59,20 @@ EthernetClient client;
 PubSubClient mqttClient(client);
 bool hasConnection = false;
 
+// register function
+void setDisplay(int number);
+void setupUltrasonic(int echo, int trigger);
+void setupEthernet();
+void setup();
+void flashLight(const int led);
+void processTrafficLight();
+void validateCounter();
+void processDistance(int trigger, int echo, int &lastDistance, void (*counterAction)(int &), const int carPassesDistance = CAR_PASSES_DISTANCE);
+void reconnect();
+void processMqtt();
+void loop();
+
+
 void setupUltrasonic(int echo, int trigger) {
   pinMode(echo, INPUT);
   pinMode(trigger, OUTPUT);
@@ -80,13 +94,6 @@ void setupEthernet() {
     Serial.println("Ethernet cable not connected!");
     delay(1000);
     return;
-  }
-}
-
-void setDisplay(int number) {
-  if (number <= 9) {
-    sevseg.setNumber(number);
-    sevseg.refreshDisplay(); 
   }
 }
 
@@ -117,6 +124,13 @@ void setup() {
   mqttClient.setServer(MQTT_SERVER_ADDRESS, MQTT_SERVER_PORT);
 
   Serial.println("End Setup!");
+}
+
+void setDisplay(int number) {
+  if (number <= 9) {
+    sevseg.setNumber(number);
+    sevseg.refreshDisplay(); 
+  }
 }
 
 void flashLight(const int led) {
