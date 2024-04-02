@@ -72,7 +72,6 @@ void reconnect();
 void processMqtt();
 void loop();
 
-
 void setupUltrasonic(int echo, int trigger) {
   pinMode(echo, INPUT);
   pinMode(trigger, OUTPUT);
@@ -239,7 +238,15 @@ void processParkingPlaces() {
   int buffer = 0;
 
   for (int i = 0; i < MAX_PARKING_SPACES; ++i) {
-    if (analogRead(PARKING_PLACES[i]) != PARKING_DEFAULT_VALUE) {
+    Serial.println("##########################");
+    Serial.print(PARKING_PLACES[i]);
+    Serial.print(": ");
+    Serial.print(analogRead(PARKING_PLACES[i]));
+    Serial.print(" = ");
+    Serial.print(PARKING_DEFAULT_VALUE);
+    Serial.println("##########################");
+
+    if (analogRead(PARKING_PLACES[i]) == PARKING_DEFAULT_VALUE) {
       buffer++;
     }
   }
@@ -248,6 +255,7 @@ void processParkingPlaces() {
   Serial.print("There are = ");
   Serial.print(freeParkingPlaces);
   Serial.print(" Parking spaces");
+  delay(2000);
 }
 
 void loop() {
