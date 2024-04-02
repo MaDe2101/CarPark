@@ -1,169 +1,147 @@
-// Other Libarys
+// Libraries
 #include "SevSeg.h"
 #include <SPI.h>
 #include <Ethernet.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
-// ++++ Const Values ++++
-// General
-const int default_value = -1;
-const bool debug = false;
+// Constants
+const int DEFAULT_VALUE = -1;
+const bool DEBUG_MODE = false;
 
 // Traffic Light
-// pins
-const int green_led = 22;
-const int yellow_led = 23;
-const int red_led = 24;
+const int GREEN_LED = 22;
+const int YELLOW_LED = 23;
+const int RED_LED = 24;
 
 // Ultrasonic
-// pins
-const int trigger_car_in = 25;
-const int echo_car_in = 26; 
-const int trigger_car_out = 27;
-const int echo_car_out = 28; 
+const int TRIGGER_CAR_IN = 25;
+const int ECHO_CAR_IN = 26; 
+const int TRIGGER_CAR_OUT = 27;
+const int ECHO_CAR_OUT = 28; 
 
-const int car_passes_distance = 9;
-const int offset = 1;
-const int outlier_upper = 1000;
-const int outlier_lower = 0;
+const int CAR_PASSES_DISTANCE = 9;
+const int OFFSET = 1;
+const int OUTLIER_UPPER = 1000;
+const int OUTLIER_LOWER = 0;
 
-const int max_parking_spaces = 6;
+const int MAX_PARKING_SPACES = 6;
 
 // Display
 SevSeg sevseg;
-const byte numDigits = 1;
-const byte digitPins[] = {};
-const byte segmentPins[] = {36, 35, 32, 33, 34, 37, 38, 39}; // pins
-const bool resistorsOnSegments = true;
-const byte hardwareConfig = COMMON_CATHODE;
+const byte NUM_DIGITS = 1;
+const byte DIGIT_PINS[] = {};
+const byte SEGMENT_PINS[] = {36, 35, 32, 33, 34, 37, 38, 39}; // Pins
+const bool RESISTORS_ON_SEGMENTS = true;
+const byte HARDWARE_CONFIG = COMMON_CATHODE;
 
 // Ethernet
-const byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-const IPAddress ip(192, 168, 0, 177);
+const byte MAC[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+const IPAddress IP(192, 168, 0, 177);
 
 // MQTT
-const char mqttServerAddress[] = "test.mosquitto.org";
-const int mqttServerPort = 1884;
-const char connectionString = "S2310454007-S2310454013-car-park";
-const char publishString = "S2310454007-S2310454013/outTopic";
+const char MQTT_SERVER_ADDRESS[] = "test.mosquitto.org";
+const int MQTT_SERVER_PORT = 1884;
+const char CONNECTION_STRING[] = "S2310454007-S2310454013-car-park";
+const char PUBLISH_STRING[] = "S2310454007-S2310454013/outTopic";
 
 // Force Sensor
-const int parking_default_value = 1023;
-const int parking_place_1 = A0;
-const int parking_place_2 = A1;
-const int parking_place_3 = A2;
-const int parking_place_4 = A3;
-const int parking_place_5 = A4;
-const int parking_place_6 = A5;
+const int PARKING_DEFAULT_VALUE = 1023;
+const int PARKING_PLACES[] = {A0, A1, A2, A3, A4, A5};
 
-// ---- Const Values ----
-
-// ++++ Global Vars ++++
-int counter = 0; // current amount of cars in the parking area
-int free_parking_places = 6; // current amount of free parking places
-int curr_led = default_value; // current led 
-int last_distance_in = default_value;
-int last_distance_out = default_value;
+// Global Variables
+int counter = 0; // Current amount of cars in the parking area
+int freeParkingPlaces = 6; // Current amount of free parking places
+int currLed = DEFAULT_VALUE; // Current LED 
+int lastDistanceIn = DEFAULT_VALUE;
+int lastDistanceOut = DEFAULT_VALUE;
 EthernetClient client;
 PubSubClient mqttClient(client);
 bool hasConnection = false;
-// ---- Global Vars ----
 
-void setup_ultrasonic(int echo, int trigger){
+void setupUltrasonic(int echo, int trigger) {
   pinMode(echo, INPUT);
   pinMode(trigger, OUTPUT);
   digitalWrite(trigger, LOW);
 }
 
-
-void setupEthernet(){
-  IPAddress serverIP(216, 58, 213, 206); // IP-Adresse von google.com
-
-  // not possible to check the link status but there is a led on the WS5100
-  //https://www.arduino.cc/reference/en/libraries/ethernet/ethernet.linkstatus/
-  if (Ethernet.begin(mac) == 0) {
-      Serial.println("Failed to configure Ethernet using DHCP");
-      // try to congifure using IP address instead of DHCP:
-      Ethernet.begin(mac, ip);
-    }
+void setupEthernet() {
+  if (Ethernet.begin(MAC) == 0) {
+    Serial.println("Failed to configure Ethernet using DHCP");
+    Ethernet.begin(MAC, IP);
+  }
 
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-    Serial.println("Ethernet shield nicht vorhanden!");
+    Serial.println("Ethernet shield not present!");
     while (true);
   }
 
   if (Ethernet.linkStatus() == LinkOFF) {
-    Serial.println("Ethernet-Kabel nicht angeschlossen!");
+    Serial.println("Ethernet cable not connected!");
     delay(1000);
     return;
   }
 }
 
-void setDisplay(int number){
-  if(number <= 9){
+void setDisplay(int number) {
+  if (number <= 9) {
     sevseg.setNumber(number);
     sevseg.refreshDisplay(); 
   }
 }
 
 void setup() {  
-  // important for debugging!
-  Serial.begin(9600); // default baud rate
+  Serial.begin(9600); // Default baud rate
   while (!Serial) {}
-
-
 
   Serial.println("Start Setup!");
 
   pinMode(A0, INPUT);
 
-  // intit Leds
-  pinMode(green_led, OUTPUT);
-  pinMode(yellow_led, OUTPUT);
-  pinMode(red_led, OUTPUT);
+  // Init LEDs
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(YELLOW_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
 
-  // init distance sensor
-  setup_ultrasonic(echo_car_in, trigger_car_in);
-  setup_ultrasonic(echo_car_out, trigger_car_out);
+  // Init distance sensors
+  setupUltrasonic(ECHO_CAR_IN, TRIGGER_CAR_IN);
+  setupUltrasonic(ECHO_CAR_OUT, TRIGGER_CAR_OUT);
 
-  // display
-  sevseg.begin(hardwareConfig, numDigits, digitPins, segmentPins, resistorsOnSegments);
+  // Init display
+  sevseg.begin(HARDWARE_CONFIG, NUM_DIGITS, DIGIT_PINS, SEGMENT_PINS, RESISTORS_ON_SEGMENTS);
   sevseg.setBrightness(90);
-  setDisplay(0); // 0
+  setDisplay(0); // Show 0 on display
 
   setupEthernet();
 
-  mqttClient.setServer(mqttServerAddress, mqttServerPort);
-
-  // init serial and open port
+  mqttClient.setServer(MQTT_SERVER_ADDRESS, MQTT_SERVER_PORT);
 
   Serial.println("End Setup!");
 }
 
-void FlashLight(const int led){
-  if(curr_led != led) {
-    digitalWrite(curr_led, LOW); 
+void flashLight(const int led) {
+  if (currLed != led) {
+    digitalWrite(currLed, LOW); 
     digitalWrite(led, HIGH); 
-    curr_led = led;
+    currLed = led;
   }
 }
 
-void ProcessTrafficLight(){
-  if(counter <= 2) {
-    FlashLight(green_led);
+void processTrafficLight() {
+  if (counter <= 2) {
+    flashLight(GREEN_LED);
   }
 
-  if((counter > 2) && (counter <= 4)) {
-    FlashLight(yellow_led);
+  else if (counter <= 4) {
+    flashLight(YELLOW_LED);
   }
 
-  if((counter > 4)) {
-    FlashLight(red_led);
+  else {
+    flashLight(RED_LED);
   }
 }
 
-void ProcessDistance(int trigger, int echo, int &last_distance, void (*counterAction)(int &), const int car_passes_distance_ = car_passes_distance){
+void processDistance(int trigger, int echo, int &lastDistance, void (*counterAction)(int &), const int carPassesDistance = CAR_PASSES_DISTANCE) {
   long duration = 0;
   long distance = 0;
 
@@ -173,51 +151,47 @@ void ProcessDistance(int trigger, int echo, int &last_distance, void (*counterAc
   duration = pulseIn(echo, HIGH);
   distance = duration * 0.034 / 2;
 
-  if(distance >= outlier_upper || distance <= outlier_lower) {
+  if (distance >= OUTLIER_UPPER || distance <= OUTLIER_LOWER) {
     Serial.print("Distance is ");
     Serial.print(distance);
-    Serial.println("Was outlier!");
+    Serial.println(" was outlier!");
     return;
   }
 
-  Serial.print("curr Distance = ");
+  Serial.print("Current Distance = ");
   Serial.print(distance);
-  Serial.print("cm; last Distance = ");
-  Serial.print(last_distance);
-  Serial.println("cm");
+  Serial.print(" cm; Last Distance = ");
+  Serial.print(lastDistance);
+  Serial.println(" cm");
   
-  bool isInOffset = (distance > (last_distance - offset)) && (distance < (last_distance + offset)); 
-  if((last_distance == default_value) || (!isInOffset)){
-    Serial.println("new distance was over old distance with offset");
-    if(distance < car_passes_distance_) {
+  bool isInOffset = (distance > (lastDistance - OFFSET)) && (distance < (lastDistance + OFFSET)); 
+  if (lastDistance == DEFAULT_VALUE || !isInOffset) {
+    Serial.println("New distance was over old distance with offset");
+    if (distance < carPassesDistance) {
       counterAction(counter);
       setDisplay(counter);
     }
   }
   
-  last_distance = distance;
+  lastDistance = distance;
 }
 
 void reconnect() {
-  // Loop until we're reconnected
   while (!mqttClient.connected()) {
     Serial.print("Attempting MQTT connection...");
 
-    if (mqttClient.connect(connectionString)) {
-	
-      //mqttClient.publish("S2310454007/outTopic", "Helloooo derjenige der dies lest!");
+    if (mqttClient.connect(CONNECTION_STRING)) {
       Serial.println("connected");     
     } else {
       Serial.print("failed, rc=");
       Serial.print(mqttClient.state());
       Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
       delay(5000);
     }
   }
 }
 
-void ProcessMqtt(){
+void processMqtt() {
   StaticJsonDocument<100> json;
   char msg[100];
   int msgSize; 
@@ -227,55 +201,50 @@ void ProcessMqtt(){
   }
 
   json["counter"] = counter;  
-  json["free_parking_places"] = free_parking_places;  
-  json["max_parking_spaces"] = max_parking_spaces; 
+  json["free_parking_places"] = freeParkingPlaces;  
+  json["max_parking_spaces"] = MAX_PARKING_SPACES; 
 
   msgSize = serializeJson(json, msg, sizeof(msg));
   msg[msgSize] = '\0';
 
-  mqttClient.publish(publishString, msg);
+  mqttClient.publish(PUBLISH_STRING, msg);
 }
 
-void process_parking_places() {
-  int parkingPlaces[] = {parking_place_1, parking_place_2, parking_place_3, parking_place_4, parking_place_5, parking_place_6};
-  int numParkingPlaces = sizeof(parkingPlaces) / sizeof(parkingPlaces[0]);
+void processParkingPlaces() {
   int buffer = 0;
 
-  for (int i = 0; i < numParkingPlaces; ++i) {
-    if (analogRead(parkingPlaces[i]) != parking_default_value) {
+  for (int i = 0; i < MAX_PARKING_SPACES; ++i) {
+    if (analogRead(PARKING_PLACES[i]) != PARKING_DEFAULT_VALUE) {
       buffer++;
     }
   }
 
-  free_parking_places = buffer;
+  freeParkingPlaces = buffer;
   Serial.print("There are = ");
-  Serial.print(free_parking_places);
-  Serial.print(" Pakring spaces");
+  Serial.print(freeParkingPlaces);
+  Serial.print(" Parking spaces");
 }
 
 void loop() {
-  process_parking_places();
+  processParkingPlaces();
 
-  if(hasConnection) {
+  if (hasConnection) {
     if (!mqttClient.connected()) {
       reconnect();
     }
 
-    // Warten, bis der MQTT-Client mit dem Broker verbunden ist
     mqttClient.loop();
   }
 
-  ProcessTrafficLight();
-  ProcessDistance(trigger_car_in, echo_car_in, last_distance_in, [](int &counter) {counter++;});
-  ProcessDistance(trigger_car_out, echo_car_out, last_distance_out, [](int &counter) {counter--;});
+  processTrafficLight();
+  processDistance(TRIGGER_CAR_IN, ECHO_CAR_IN, lastDistanceIn, [](int &counter) {counter++;});
+  processDistance(TRIGGER_CAR_OUT, ECHO_CAR_OUT, lastDistanceOut, [](int &counter) {counter--;});
 
-  // do here some fun with the six (hihi) weight teile do
-  if(hasConnection){
-    ProcessMqtt();
+  if (hasConnection) {
+    processMqtt();
   }
 
-  // hack for debugging
-  if(counter > 6){
+  if (counter > MAX_PARKING_SPACES) {
     counter = 0;
     setDisplay(counter);
   }
