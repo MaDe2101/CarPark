@@ -141,6 +141,16 @@ void processTrafficLight() {
   }
 }
 
+void validateCounter(){
+  if(counter < 0) {
+    counter = 0;
+  }
+
+  if(counter > MAX_PARKING_SPACES){
+    counter = MAX_PARKING_SPACES;
+  }
+}
+
 void processDistance(int trigger, int echo, int &lastDistance, void (*counterAction)(int &), const int carPassesDistance = CAR_PASSES_DISTANCE) {
   long duration = 0;
   long distance = 0;
@@ -169,6 +179,7 @@ void processDistance(int trigger, int echo, int &lastDistance, void (*counterAct
     Serial.println("New distance was over old distance with offset");
     if (distance < carPassesDistance) {
       counterAction(counter);
+      validateCounter();
       setDisplay(counter);
     }
   }
@@ -242,11 +253,6 @@ void loop() {
 
   if (hasConnection) {
     processMqtt();
-  }
-
-  if (counter > MAX_PARKING_SPACES) {
-    counter = 0;
-    setDisplay(counter);
   }
 
   Serial.print("Counter = ");
