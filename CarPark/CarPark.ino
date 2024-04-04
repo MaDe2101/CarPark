@@ -41,7 +41,7 @@ const IPAddress IP(192, 168, 0, 177);
 
 // MQTT
 const char MQTT_SERVER_ADDRESS[] = "test.mosquitto.org";
-const int MQTT_SERVER_PORT = 1884;
+const int MQTT_SERVER_PORT = 1883;
 const char CONNECTION_STRING[] = "S2310454007-S2310454013-car-park";
 const char PUBLISH_STRING[] = "S2310454007-S2310454013/outTopic";
 
@@ -82,6 +82,8 @@ void setupEthernet() {
   if (Ethernet.begin(MAC) == 0) {
     Serial.println("Failed to configure Ethernet using DHCP");
     Ethernet.begin(MAC, IP);
+  } else {
+    hasConnection = true;
   }
 
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {
