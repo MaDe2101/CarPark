@@ -51,6 +51,8 @@ const int PARKING_PLACES[] = {A0, A1, A2, A3, A4, A5};
 
 // Global Variables
 int counter = 0; // Current amount of cars in the parking area
+int cars_driven_in = 0;
+int cars_driven_out = 0;
 int freeParkingPlaces = 6; // Current amount of free parking places
 int currLed = DEFAULT_VALUE; // Current LED 
 int lastDistanceIn = DEFAULT_VALUE;
@@ -58,6 +60,7 @@ int lastDistanceOut = DEFAULT_VALUE;
 EthernetClient client;
 PubSubClient mqttClient(client);
 bool hasConnection = false;
+int parkingPlaceResult[] = {0, 0, 0, 0, 0, 0};
 
 // register function
 void setDisplay(int number);
@@ -66,7 +69,7 @@ void setupEthernet();
 void setup();
 void flashLight(const int led);
 void processTrafficLight();
-void validateCounter();
+bool validateCounter();
 void processDistance(int trigger, int echo, int &lastDistance, void (*counterAction)(int &), const int carPassesDistance = CAR_PASSES_DISTANCE);
 void reconnect();
 void processMqtt();
@@ -156,14 +159,19 @@ void processTrafficLight() {
   }
 }
 
-void validateCounter(){
+bool validateCounter(){
+  bool result = false;
   if(counter < 0) {
     counter = 0;
+    result = true;
   }
 
   if(counter > MAX_PARKING_SPACES){
     counter = MAX_PARKING_SPACES;
+    result = true;
   }
+
+  return result;
 }
 
 void processDistance(int trigger, int echo, int &lastDistance, void (*counterAction)(int &), const int carPassesDistance = CAR_PASSES_DISTANCE) {
@@ -194,7 +202,6 @@ void processDistance(int trigger, int echo, int &lastDistance, void (*counterAct
     Serial.println("New distance was over old distance with offset");
     if (distance < carPassesDistance) {
       counterAction(counter);
-      validateCounter();
       setDisplay(counter);
     }
   }
@@ -226,9 +233,17 @@ void processMqtt() {
     reconnect();
   }
 
-  json["counter"] = counter;  
-  json["free_parking_places"] = freeParkingPlaces;  
-  json["max_parking_spaces"] = MAX_PARKING_SPACES; 
+  JsonArray array;
+  for (int i = 0; i < MAX_PARKING_SPACES; ++i) {
+    array.add(parkingPlaceResult[i]);
+  }
+
+
+  //json["cars_in_parking_center"] = counter;  
+  //json["free_parking_places"] = freeParkingPlaces; 
+  json["CarsEntered"] = cars_driven_in;
+  json["CarsLeft"] = cars_driven_out;
+  json["parking_spaces"] = array; 
 
   msgSize = serializeJson(json, msg, sizeof(msg));
   msg[msgSize] = '\0';
@@ -248,7 +263,8 @@ void processParkingPlaces() {
     Serial.print(PARKING_DEFAULT_VALUE);
     Serial.println("##########################");
 
-    if (analogRead(PARKING_PLACES[i]) == PARKING_DEFAULT_VALUE) {
+    parkingPlaceResult[i] = analogRead(PARKING_PLACES[i]) == PARKING_DEFAULT_VALUE;
+    if (parkingPlaceResult[i]) {
       buffer++;
     }
   }
@@ -272,8 +288,12 @@ void loop() {
   }
 
   processTrafficLight();
-  processDistance(TRIGGER_CAR_IN, ECHO_CAR_IN, lastDistanceIn, [](int &counter) {counter++;});
-  processDistance(TRIGGER_CAR_OUT, ECHO_CAR_OUT, lastDistanceOut, [](int &counter) {counter--;});
+  processDistance(TRIGGER_CAR_IN, ECHO_CAR_IN, lastDistanceIn, [](int &counter) {counter++; cars_driven_in++; if(validateCounter()) {cars_driven_in--; counter--;}});
+
+  processDistance(TRIGGER_CAR_OUT, ECHO_CAR_OUT, lastDistanceOut, [](int &counter) {counter--; cars_driven_out++; if(validateCounter()) {cars_driven_out--; counter++;}});
+
+  //processDistance(TRIGGER_CAR_IN, ECHO_CAR_IN, lastDistanceIn, [](int &counter) {counter++; cars_driven_in++; if(validateCounter() {cars_driven_in--; counter--;})});
+  //processDistance(TRIGGER_CAR_OUT, ECHO_CAR_OUT, lastDistanceOut, [](int &counter) {counter--; cars_driven_out++; if(validateCounter() {cars_driven_out--; counter++;}});
 
   if (hasConnection) {
     processMqtt();
