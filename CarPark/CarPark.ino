@@ -225,30 +225,32 @@ void reconnect() {
 }
 
 void processMqtt() {
-  StaticJsonDocument<100> json;
-  char msg[100];
-  int msgSize; 
+  StaticJsonDocument<512> json; // Erhöhe die Kapazität des Dokuments entsprechend
+  StaticJsonDocument<200> jsonDoc;
+  char msg[512]; // Erhöhe die Größe des Puffer-Arrays entsprechend
+  int msgSize;
 
   if (!mqttClient.connected()) {
     reconnect();
   }
 
-  JsonArray array;
+  JsonArray jsonArray = jsonDoc.to<JsonArray>();
   for (int i = 0; i < MAX_PARKING_SPACES; ++i) {
-    array.add(parkingPlaceResult[i]);
+    jsonArray.add(parkingPlaceResult[i]);
   }
 
-
-  //json["cars_in_parking_center"] = counter;  
-  //json["free_parking_places"] = freeParkingPlaces; 
   json["CarsEntered"] = cars_driven_in;
   json["CarsLeft"] = cars_driven_out;
-  json["parking_spaces"] = array; 
+  json["parking_spaces"] = jsonDoc;
 
   msgSize = serializeJson(json, msg, sizeof(msg));
-  msg[msgSize] = '\0';
-
-  mqttClient.publish(PUBLISH_STRING, msg);
+  
+  if (msgSize > 0) {
+    msg[msgSize] = '\0';
+    mqttClient.publish(PUBLISH_STRING, msg);
+  } else {
+    Serial.println("JSON serialization failed: Buffer too small");
+  }
 }
 
 void processParkingPlaces() {
