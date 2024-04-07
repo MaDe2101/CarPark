@@ -10,17 +10,17 @@ const int DEFAULT_VALUE = -1;
 const bool DEBUG_MODE = false;
 
 // Traffic Light
-const int GREEN_LED = 22;
-const int YELLOW_LED = 23;
-const int RED_LED = 24;
+const int GREEN_LED = 42;
+const int YELLOW_LED = 43;
+const int RED_LED = 44;
 
 // Ultrasonic
 const int TRIGGER_CAR_IN = 25;
 const int ECHO_CAR_IN = 26; 
-const int TRIGGER_CAR_OUT = 27;
-const int ECHO_CAR_OUT = 28; 
+const int TRIGGER_CAR_OUT = 24;
+const int ECHO_CAR_OUT = 22; 
 
-const int CAR_PASSES_DISTANCE = 9;
+const int CAR_PASSES_DISTANCE = 5;
 const int OFFSET = 1;
 const int OUTLIER_UPPER = 1000;
 const int OUTLIER_LOWER = 0;
@@ -171,7 +171,7 @@ bool validateCounter(){
     result = true;
   }
 
-  return result;
+  return false;
 }
 
 void processDistance(int trigger, int echo, int &lastDistance, void (*counterAction)(int &), const int carPassesDistance = CAR_PASSES_DISTANCE) {
@@ -272,10 +272,6 @@ void processParkingPlaces() {
   }
 
   freeParkingPlaces = buffer;
-  Serial.print("There are = ");
-  Serial.print(freeParkingPlaces);
-  Serial.print(" Parking spaces");
-  delay(2000);
 }
 
 void loop() {
@@ -290,9 +286,21 @@ void loop() {
   }
 
   processTrafficLight();
-  processDistance(TRIGGER_CAR_IN, ECHO_CAR_IN, lastDistanceIn, [](int &counter) {counter++; cars_driven_in++; if(validateCounter()) {cars_driven_in--; counter--;}});
+  processDistance(TRIGGER_CAR_IN, ECHO_CAR_IN, lastDistanceIn, [](int &counter) {
+    cars_driven_in++;
+    counter = cars_driven_in - cars_driven_out;
+  });
 
-  processDistance(TRIGGER_CAR_OUT, ECHO_CAR_OUT, lastDistanceOut, [](int &counter) {counter--; cars_driven_out++; if(validateCounter()) {cars_driven_out--; counter++;}});
+  processDistance(TRIGGER_CAR_OUT, ECHO_CAR_OUT, lastDistanceOut, [](int &counter) {
+    cars_driven_out++;
+      if (cars_driven_out > cars_driven_in) {
+         cars_driven_out = cars_driven_in;
+      }
+      counter = cars_driven_in - cars_driven_out;
+  });
+  //processDistance(TRIGGER_CAR_IN, ECHO_CAR_IN, lastDistanceIn, [](int &counter) {counter++; cars_driven_in++; if(validateCounter()) {cars_driven_in--; counter--;}});
+
+  //processDistance(TRIGGER_CAR_OUT, ECHO_CAR_OUT, lastDistanceOut, [](int &counter) {counter--; cars_driven_out++; if(validateCounter()) {cars_driven_out--; counter++;}});
 
   //processDistance(TRIGGER_CAR_IN, ECHO_CAR_IN, lastDistanceIn, [](int &counter) {counter++; cars_driven_in++; if(validateCounter() {cars_driven_in--; counter--;})});
   //processDistance(TRIGGER_CAR_OUT, ECHO_CAR_OUT, lastDistanceOut, [](int &counter) {counter--; cars_driven_out++; if(validateCounter() {cars_driven_out--; counter++;}});
