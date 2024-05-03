@@ -2,6 +2,11 @@
 ## Description
 The SmartParking System is a project aimed at developing a comprehensive parking management solution for a facility. It involves utilizing various sensors, microcontrollers, and networking technologies to efficiently manage parking spaces and provide real-time insights into parking availability.
 
+## Architecture 
+In this architectural design sketch I have decided not to include all cables and elements such as pre-resistors, breadboards etc. This sketch is only intended to show the structure of the application. This sketch is only intended to show the structure of the application
+
+![architectural design sketch](./img/Architecture.png)
+
 ## Libraries Used
 - **SevSeg:** Library for controlling seven-segment displays.
 - **SPI:** Arduino library for SPI communication.
