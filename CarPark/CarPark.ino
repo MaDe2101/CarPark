@@ -76,7 +76,6 @@ void setup_ultrasonic(int echo, int trigger){
   digitalWrite(trigger, LOW);
 }
 
-
 void setupEthernet(){
   IPAddress serverIP(216, 58, 213, 206); // IP-Adresse von google.com
 
@@ -84,8 +83,7 @@ void setupEthernet(){
   //https://www.arduino.cc/reference/en/libraries/ethernet/ethernet.linkstatus/
   if (Ethernet.begin(mac) == 0) {
       Serial.println("Failed to configure Ethernet using DHCP");
-      // try to congifure using IP address instead of DHCP:
-      Ethernet.begin(mac, ip);
+      Ethernet.begin(mac, ip); // try to congifure using IP address instead of DHCP:
     }
 
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {
@@ -95,8 +93,7 @@ void setupEthernet(){
 
   if (Ethernet.linkStatus() == LinkOFF) {
     Serial.println("Ethernet-Kabel nicht angeschlossen!");
-    delay(1000);
-    return;
+    while (true);
   }
 }
 
@@ -112,9 +109,9 @@ void setup() {
   Serial.begin(9600); // default baud rate
   while (!Serial) {}
 
-
-
-  Serial.println("Start Setup!");
+  if(debug){  
+    Serial.println("Start Setup!");
+  }
 
   pinMode(A0, INPUT);
 
@@ -130,15 +127,15 @@ void setup() {
   // display
   sevseg.begin(hardwareConfig, numDigits, digitPins, segmentPins, resistorsOnSegments);
   sevseg.setBrightness(90);
-  setDisplay(0); // 0
+  setDisplay(0); 
 
   setupEthernet();
 
   mqttClient.setServer(mqttServerAddress, mqttServerPort);
-
-  // init serial and open port
-
-  Serial.println("End Setup!");
+  
+  if(debug){  
+    Serial.println("End Setup!");
+  }
 }
 
 void FlashLight(const int led){
@@ -174,21 +171,28 @@ void ProcessDistance(int trigger, int echo, int &last_distance, void (*counterAc
   distance = duration * 0.034 / 2;
 
   if(distance >= outlier_upper || distance <= outlier_lower) {
-    Serial.print("Distance is ");
-    Serial.print(distance);
-    Serial.println("Was outlier!");
+    if(debug){  
+      Serial.print("Distance is ");
+      Serial.print(distance);
+      Serial.println("Was outlier!");
+    }
+
     return;
   }
 
-  Serial.print("curr Distance = ");
-  Serial.print(distance);
-  Serial.print("cm; last Distance = ");
-  Serial.print(last_distance);
-  Serial.println("cm");
-  
+  if(debug){  
+    Serial.print("curr Distance = ");
+    Serial.print(distance);
+    Serial.print("cm; last Distance = ");
+    Serial.print(last_distance);
+    Serial.println("cm");
+  }
+
   bool isInOffset = (distance > (last_distance - offset)) && (distance < (last_distance + offset)); 
   if((last_distance == default_value) || (!isInOffset)){
-    Serial.println("new distance was over old distance with offset");
+    if(debug){
+      Serial.println("new distance was over old distance with offset");
+    }
     if(distance < car_passes_distance_) {
       counterAction(counter);
       setDisplay(counter);
@@ -204,15 +208,13 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
 
     if (mqttClient.connect(connectionString)) {
-	
-      //mqttClient.publish("S2310454007/outTopic", "Helloooo derjenige der dies lest!");
       Serial.println("connected");     
     } else {
       Serial.print("failed, rc=");
       Serial.print(mqttClient.state());
       Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(5000);
+      
+      delay(5000); // Wait 5 seconds before retrying
     }
   }
 }
@@ -226,9 +228,11 @@ void ProcessMqtt(){
     reconnect();
   }
 
-  json["counter"] = counter;  
-  json["free_parking_places"] = free_parking_places;  
-  json["max_parking_spaces"] = max_parking_spaces; 
+  if(debug) {
+    json["counter"] = counter;  
+    json["free_parking_places"] = free_parking_places;  
+    json["max_parking_spaces"] = max_parking_spaces; 
+  }
 
   msgSize = serializeJson(json, msg, sizeof(msg));
   msg[msgSize] = '\0';
@@ -248,9 +252,12 @@ void process_parking_places() {
   }
 
   free_parking_places = buffer;
-  Serial.print("There are = ");
-  Serial.print(free_parking_places);
-  Serial.print(" Pakring spaces");
+
+  if(debug) {
+    Serial.print("There are = ");
+    Serial.print(free_parking_places);
+    Serial.print(" Pakring spaces");
+  }
 }
 
 void loop() {
@@ -261,7 +268,7 @@ void loop() {
       reconnect();
     }
 
-    // Warten, bis der MQTT-Client mit dem Broker verbunden ist
+    // Wait until the MQTT client is connected to the broker
     mqttClient.loop();
   }
 
@@ -279,9 +286,11 @@ void loop() {
     counter = 0;
     setDisplay(counter);
   }
-
-  Serial.print("Counter = ");
-  Serial.println(counter);
+  
+  if(debug) {
+    Serial.print("Counter = ");
+    Serial.println(counter);
+  }
 
   delay(1000);
 }
