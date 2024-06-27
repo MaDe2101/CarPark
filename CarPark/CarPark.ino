@@ -228,11 +228,9 @@ void ProcessMqtt(){
     reconnect();
   }
 
-  if(debug) {
-    json["counter"] = counter;  
-    json["free_parking_places"] = free_parking_places;  
-    json["max_parking_spaces"] = max_parking_spaces; 
-  }
+  json["counter"] = counter;  
+  json["free_parking_places"] = free_parking_places;  
+  json["max_parking_spaces"] = max_parking_spaces; 
 
   msgSize = serializeJson(json, msg, sizeof(msg));
   msg[msgSize] = '\0';
